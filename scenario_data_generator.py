@@ -9,10 +9,10 @@ Generates:
 All scenario data is isolated to prevent cross-contamination.
 
 Scenarios:
-1. "The Two-Hour Attorney" - Captive medical mill with hidden ownership
-2. "The Typo That Wasn't" - Identity web via shared phone/address
-3. "The Audit That Went Deeper" - Provider billing anomaly + false positive contrast
-4. "The Case We Thought Was Closed" - Network migration after prosecution
+1. "The Captive Medical Mill" - Captive medical mill with hidden ownership
+2. "The Identity Web" - Identity web via shared phone/address
+3. "Provider Distinction" - Provider billing anomaly + false positive contrast
+4. "Network Migration" - Network migration after prosecution
 """
 
 import random
@@ -550,12 +550,12 @@ class ScenarioDataGenerator:
         print(f"✓ Created {count} legitimate claims")
 
     # =========================================================================
-    # SCENARIO 1: THE TWO-HOUR ATTORNEY
+    # SCENARIO 1: The Captive Medical Mill
     # =========================================================================
     
     def create_scenario_1_two_hour_attorney(self):
         """
-        Creates the "Two-Hour Attorney" fraud ring.
+        Creates the "Captive Medical Mill" fraud ring.
         
         Structure:
         - Attorney J. Marcus Webb (47 clients)
@@ -566,7 +566,7 @@ class ScenarioDataGenerator:
         - James Rivera = billing manager at Wellness + lives with Maria
         """
         print("\n" + "="*60)
-        print("SCENARIO 1: The Two-Hour Attorney")
+        print("SCENARIO 1: The Captive Medical Mill")
         print("="*60)
         
         with self.driver.session() as session:
@@ -846,7 +846,7 @@ class ScenarioDataGenerator:
             print(f"    - Maria Santos witness appearances: {maria_witness_count}")
 
     # =========================================================================
-    # SCENARIO 2: THE TYPO THAT WASN'T
+    # SCENARIO 2: The Identity Web
     # =========================================================================
     
     def create_scenario_2_identity_web(self):
@@ -862,7 +862,7 @@ class ScenarioDataGenerator:
         - All within 45-day window
         """
         print("\n" + "="*60)
-        print("SCENARIO 2: The Typo That Wasn't (Identity Web)")
+        print("SCENARIO 2: The Identity Web")
         print("="*60)
         
         with self.driver.session() as session:
@@ -980,22 +980,19 @@ class ScenarioDataGenerator:
             
             print(f"  ✓ Created 7 claimants with shared identifiers")
             
-            # === CREATE 6 CLAIMS (totaling ~$185K) ===
-            claim_amounts = [32000, 28500, 35000, 31000, 29500, 29000]  # Total: $185,000
+            # === CREATE 7 CLAIMS (totaling ~$215K) ===
+            claim_amounts = [32000, 28500, 35000, 31000, 29500, 29000, 30000]  # Total: $215,000
             base_date = datetime.now() - timedelta(days=60)
             
-            for i in range(6):
+            for i in range(7):
                 claim_id = f"CLM_S2_{self.claim_counter:05d}"
                 self.claim_counter += 1
                 
                 # Spread across 45-day window
                 claim_date = (base_date + timedelta(days=random.randint(0, 45))).strftime("%Y-%m-%d")
                 
-                # Different claimant for each claim (one claimant has 2 claims)
-                if i < 6:
-                    claimant_id = claimant_ids[i]
-                else:
-                    claimant_id = claimant_ids[0]  # Marcus has 2nd claim
+                # Each claimant gets one claim
+                claimant_id = claimant_ids[i]
                 
                 provider_id = random.choice(self.background_providers)
                 adjuster_id = random.choice(self.adjuster_pool)
@@ -1035,8 +1032,8 @@ class ScenarioDataGenerator:
                     location_id=location_id
                 )
             
-            self.stats['scenario_2_claims'] = 6
-            print(f"  ✓ Created 6 claims totaling ${sum(claim_amounts):,}")
+            self.stats['scenario_2_claims'] = 7
+            print(f"  ✓ Created 7 claims totaling ${sum(claim_amounts):,}")
 
     # =========================================================================
     # SCENARIO 3A: THE AUDIT - SUNRISE WELLNESS (FRAUD)
@@ -1630,7 +1627,7 @@ class ScenarioDataGenerator:
             print(f"    - 12 different attorneys (no concentration)")
 
     # =========================================================================
-    # SCENARIO 4: THE CASE WE THOUGHT WAS CLOSED
+    # SCENARIO 4: Network Migration
     # =========================================================================
     
     def create_scenario_4_closed_case(self):
@@ -1648,7 +1645,7 @@ class ScenarioDataGenerator:
           - Owner: Dr. Patricia Simmons (former Bernard's employee)
         """
         print("\n" + "="*60)
-        print("SCENARIO 4: The Case We Thought Was Closed")
+        print("SCENARIO 4: Network Migration")
         print("="*60)
         
         with self.driver.session() as session:
@@ -1778,7 +1775,7 @@ class ScenarioDataGenerator:
                     location_id=location_id
                 )
                 
-                # 12 of 15 represented by Chen
+                # 12 of 15 represented by Chen, remaining 3 have different attorneys
                 if chen_at_bernard < 12:
                     session.run("""
                         MATCH (c:Claim {id: $claim_id})
@@ -1786,8 +1783,16 @@ class ScenarioDataGenerator:
                         CREATE (c)-[:REPRESENTED_BY]->(a)
                     """, claim_id=claim_id, chen_id=chen_id)
                     chen_at_bernard += 1
+                else:
+                    # Remaining 3 claims use background attorneys
+                    other_attorney = random.choice(self.background_attorneys)
+                    session.run("""
+                        MATCH (c:Claim {id: $claim_id})
+                        MATCH (a:Attorney {id: $att_id})
+                        CREATE (c)-[:REPRESENTED_BY]->(a)
+                    """, claim_id=claim_id, att_id=other_attorney)
             
-            print(f"  ✓ Created 15 confirmed fraud claims at Bernard's (12 with Chen)")
+            print(f"  ✓ Created 15 confirmed fraud claims at Bernard's (12 with Chen, 3 with other attorneys)")
             
             # === CREATE DR. PATRICIA SIMMONS (Former Bernard's employee, now owns Rapid Recovery) ===
             simmons_id = "P_S4_SIMMONS"

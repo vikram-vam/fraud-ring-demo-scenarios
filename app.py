@@ -160,7 +160,7 @@ RELATIONSHIP_LABELS = {
 
 SCENARIOS = {
     1: {
-        "title": "The Two-Hour Attorney",
+        "title": "Captive Medical Mill",
         "subtitle": "Uncovering a Captive Medical Mill Operation",
         "icon": "⚖️",
         "starting_entity": ("Attorney", "ATT_S1_WEBB", "J. Marcus Webb"),
@@ -228,9 +228,9 @@ While not unprecedented, this rapid attorney engagement warrants a closer look a
             {
                 "depth": 4,
                 "title": "Employee Network Mapping",
-                "narrative": "Investigating personnel connections between the two facilities...",
-                "traditional": "Employee records exist outside claims systems. This connection would **never surface through traditional investigation**.",
-                "discovery": "The billing manager at Wellness Partners **shares a residential address** with the patient coordinator at Peak Recovery.",
+                "narrative": "Cross-referencing personnel records from **state licensing databases** and **corporate filings** with residential address data...",
+                "traditional": "Employee data exists in external public records (licensing boards, corporate filings). Cross-referencing these with residential addresses requires accessing **multiple disconnected systems** — a step rarely taken without prior suspicion.",
+                "discovery": "The billing manager at Wellness Partners **shares a residential address** with the patient coordinator at Peak Recovery — indicating a personal relationship between key staff at both clinics.",
                 "query": """
                     MATCH (prov:Provider)-[:LOCATED_AT]->(bizAddr:Address {id: 'ADDR_S1_BIZ'})
                     OPTIONAL MATCH (prov)-[:EMPLOYS]->(emp:Person)
@@ -255,9 +255,9 @@ While not unprecedented, this rapid attorney engagement warrants a closer look a
             {
                 "depth": 6,
                 "title": "Ownership Structure Revealed",
-                "narrative": "Examining corporate registration records for these medical facilities...",
-                "traditional": "Connecting corporate registry data to attorney family relationships? This would **never happen** in standard investigation workflows.",
-                "discovery": "**Linda Webb** (the attorney's spouse) serves as **registered agent for both clinics**. This is a fully captive medical mill operation.",
+                "narrative": "Cross-referencing **Secretary of State corporate filings** (registered agent records) with **public marriage records** and attorney bar registration...",
+                "traditional": "Corporate registry data is public but rarely cross-referenced with claims. Connecting a provider's registered agent to an attorney's spouse requires querying **three separate public record systems** — a path no investigator would pursue without graph-enabled discovery.",
+                "discovery": "**Linda Webb** (the attorney's spouse per marriage records) serves as **registered agent for both clinics** per corporate filings. This confirms a fully captive medical mill operation with hidden family ownership.",
                 "query": """
                     MATCH (a:Attorney {id: 'ATT_S1_WEBB'})
                     OPTIONAL MATCH (a)-[:MARRIED_TO]->(spouse:Person)
@@ -282,7 +282,7 @@ While not unprecedented, this rapid attorney engagement warrants a closer look a
     },
     
     2: {
-        "title": "The Typo That Wasn't",
+        "title": "Identity Web",
         "subtitle": "Detecting an Identity Network Through Shared Contact Information",
         "icon": "📱",
         "starting_entity": ("Phone", "PH_S2_MAIN", "555-847-2931"),
@@ -322,9 +322,9 @@ The adjuster's initial assessment: *"Likely a data entry error or shared family 
             {
                 "depth": 2,
                 "title": "Residential Address Mapping",
-                "narrative": "Analyzing residential addresses for these five individuals...",
+                "narrative": "Analyzing residential addresses for all five individuals connected to this phone...",
                 "traditional": "Running separate address queries for each person across different systems. Each query represents a different access request.",
-                "discovery": "**3 of 5 individuals** share the same residential address: 847 Oak Street, Apartment 4B.",
+                "discovery": "**3 of 5 individuals** share the same residential address: 847 Oak Street, Apartment 4B. The remaining 2 (Marcus and Tanya Williams) live at separate addresses.",
                 "query": """
                     MATCH (ph:Phone {number: '555-847-2931'})<-[:HAS_PHONE]-(p:Person)
                     OPTIONAL MATCH (p)-[:LIVES_AT]->(addr:Address)
@@ -334,46 +334,58 @@ The adjuster's initial assessment: *"Likely a data entry error or shared family 
             {
                 "depth": 3,
                 "title": "Address-Based Network Expansion",
-                "narrative": "Identifying all individuals associated with this apartment address...",
-                "traditional": "Cross-referencing address databases with claimant records across multiple systems would require **hours of manual work**.",
-                "discovery": "**2 additional individuals** reside at this address using a different phone number (555-847-2932). **Total network: 7 people.**",
+                "narrative": "Expanding the search to identify **all individuals** at the shared address, including those using different contact information...",
+                "traditional": "Cross-referencing address databases with claimant records across multiple systems would require **hours of manual work** and would miss connections through alternate phone numbers.",
+                "discovery": "**2 additional individuals** (Lisa and Tyrell Morgan) reside at 847 Oak Street using a **different phone number** (555-847-2932). **Total network: 7 people across 2 phone numbers.**",
                 "query": """
-                    MATCH (addr:Address {id: 'ADDR_S2_OAK'})
-                    OPTIONAL MATCH (addr)<-[:LIVES_AT]-(p:Person)
-                    OPTIONAL MATCH (p)-[:HAS_PHONE]->(ph:Phone)
-                    RETURN addr, p, ph
+                    MATCH (ph1:Phone {number: '555-847-2931'})<-[:HAS_PHONE]-(p1:Person)
+                    OPTIONAL MATCH (p1)-[:LIVES_AT]->(addr1:Address)
+                    WITH collect(DISTINCT p1) as phone1_people, collect(DISTINCT addr1) as addrs
+                    MATCH (addr:Address {id: 'ADDR_S2_OAK'})<-[:LIVES_AT]-(p2:Person)
+                    OPTIONAL MATCH (p2)-[:HAS_PHONE]->(ph2:Phone)
+                    WITH phone1_people, p2, ph2, addr
+                    UNWIND phone1_people as p1
+                    OPTIONAL MATCH (p1)-[:LIVES_AT]->(addr1:Address)
+                    OPTIONAL MATCH (p1)-[:HAS_PHONE]->(ph1:Phone)
+                    RETURN p1, addr1, ph1, p2, ph2, addr
                 """
             },
             {
                 "depth": 4,
                 "title": "Complete Claims Analysis",
-                "narrative": "Mapping all claims connected to this identity network...",
-                "traditional": "Manually cross-referencing 7 individuals across all claims databases. **This level of investigation would never occur** based on a single phone match.",
-                "discovery": "**6 claims totaling $185,000** — all filed within a **45-day window**. This is coordinated fraud activity.",
+                "narrative": "Mapping all claims filed by individuals in this identity network...",
+                "traditional": "Manually cross-referencing 7 individuals across all claims databases. **This level of comprehensive investigation would never occur** based on a single ISO phone match.",
+                "discovery": "**7 claims totaling $215,000** — all filed within a **45-day window**. Every individual in the network has filed a claim. This is coordinated fraud activity.",
                 "query": """
-                    MATCH (addr:Address {id: 'ADDR_S2_OAK'})<-[:LIVES_AT]-(p:Person)
-                    OPTIONAL MATCH (p)-[:HAS_PHONE]->(ph:Phone)
+                    MATCH (ph:Phone)<-[:HAS_PHONE]-(p:Person)-[:LIVES_AT]->(addr:Address)
+                    WHERE ph.number IN ['555-847-2931', '555-847-2932']
                     OPTIONAL MATCH (c:Claim)-[:FILED_BY]->(p)
-                    RETURN addr, p, ph, c
+                    RETURN ph, p, addr, c
+                    UNION
+                    MATCH (ph:Phone {number: '555-847-2931'})<-[:HAS_PHONE]-(p:Person)
+                    WHERE NOT (p)-[:LIVES_AT]->(:Address {id: 'ADDR_S2_OAK'})
+                    OPTIONAL MATCH (p)-[:LIVES_AT]->(addr:Address)
+                    OPTIONAL MATCH (c:Claim)-[:FILED_BY]->(p)
+                    RETURN ph, p, addr, c
                 """
             }
         ],
         "conclusion": {
-            "exposure": "$185,000 across 6 claims",
-            "traditional_time": "ISO shows 2 claims; remaining 4 would be missed entirely",
-            "graph_time": "60 seconds to full network mapping",
-            "key_finding": "Network expansion from 2 ISO hits to 7 connected individuals. You cannot query for relationships you don't know exist.",
+            "exposure": "$215,000 across 7 claims",
+            "traditional_time": "ISO shows 2 claims; remaining 5 would be missed entirely",
+            "graph_time": "90 seconds to full network mapping",
+            "key_finding": "Network expansion from 2 ISO hits to 7 connected individuals filing 7 claims. Graph reveals connections through **both shared phones and shared addresses** — patterns impossible to discover through linear queries.",
             "action_items": [
-                "Deny all 6 claims pending fraud investigation",
+                "Deny all 7 claims pending fraud investigation",
                 "Refer to NICB for identity fraud prosecution",
-                "Flag both phone numbers for future claim monitoring",
-                "Investigate property records for 847 Oak Street"
+                "Flag both phone numbers (555-847-2931, 555-847-2932) for future claim monitoring",
+                "Investigate property records for 847 Oak Street, Apt 4B"
             ]
         }
     },
     
     3: {
-        "title": "The Audit That Went Deeper",
+        "title": "Provider Distinction",
         "subtitle": "Distinguishing Fraud Networks from High-Volume Legitimate Providers",
         "icon": "📊",
         "starting_entity": ("Provider", "PROV_S3_SUNRISE", "Sunrise Wellness Clinic"),
@@ -445,28 +457,36 @@ Both flagged. Limited SIU resources available for investigation.
             {
                 "depth": 4,
                 "title": "Cross-Provider Connection Detection",
-                "narrative": "Searching for shared identifiers between patients at both clinics...",
-                "traditional": "Comparing patient contact information between providers? **No investigator would think to perform this analysis.**",
-                "discovery": "**7 claimants share a phone number** across both clinics. Additionally, the **same witness appears on claims at both facilities**.",
+                "narrative": "Searching for **shared identifiers** and **common participants** between patients at both clinics...",
+                "traditional": "Comparing patient contact information and witness lists between providers? **No investigator would systematically perform this cross-provider analysis.**",
+                "discovery": "**7 claimants share a phone number** (555-991-8847) across both clinics. Additionally, **Carmen Reyes** appears as witness on claims at **both facilities** — a strong indicator of a professional witness.",
                 "query": """
                     MATCH (ph:Phone {id: 'PH_S3_SHARED'})<-[:HAS_PHONE]-(p:Person)
                     OPTIONAL MATCH (c:Claim)-[:FILED_BY]->(p)
                     OPTIONAL MATCH (c)-[:TREATED_AT]->(prov:Provider)
-                    RETURN ph, p, c, prov
+                    WITH ph, p, c, prov
+                    OPTIONAL MATCH (c)-[:WITNESSED_BY]->(w:Person)
+                    RETURN ph, p, c, prov, w
+                    UNION
+                    MATCH (carmen:Person {id: 'P_S3_CARMEN'})<-[:WITNESSED_BY]-(c:Claim)
+                    OPTIONAL MATCH (c)-[:TREATED_AT]->(prov:Provider)
+                    OPTIONAL MATCH (c)-[:FILED_BY]->(claimant:Person)
+                    RETURN carmen as w, claimant as p, c, prov, null as ph
                 """
             },
             {
                 "depth": 5,
                 "title": "Comparison: City General ER",
-                "narrative": "Now analyzing the second flagged provider for comparison...",
-                "traditional": "Same manual process repeated. Most audits would stop after investigating the first facility.",
-                "discovery": "City General ER: **32 claims, 12 different attorneys, zero shared phones or addresses**. High volume is explained by location on a major accident corridor. **This is a legitimate high-volume provider.**",
+                "narrative": "Now analyzing the second flagged provider to determine if it warrants investigation or represents a **false positive**...",
+                "traditional": "Same manual review process repeated for the second provider. Most audits would stop after investigating the first facility due to resource constraints.",
+                "discovery": "City General ER: **32 claims, 12 different attorneys, zero shared phones or addresses**. The facility's location at the **I-85/Highway 20 junction** (a major accident corridor) explains the elevated volume. **This is a legitimate high-volume provider — no investigation warranted.**",
                 "query": """
                     MATCH (prov:Provider {id: 'PROV_S3_CITYGEN'})<-[:TREATED_AT]-(c:Claim)
                     OPTIONAL MATCH (c)-[:REPRESENTED_BY]->(a:Attorney)
                     OPTIONAL MATCH (c)-[:FILED_BY]->(p:Person)
                     OPTIONAL MATCH (p)-[:HAS_PHONE]->(ph:Phone)
-                    RETURN prov, c, a, p, ph
+                    OPTIONAL MATCH (c)-[:OCCURRED_AT]->(loc:Location)
+                    RETURN prov, c, a, p, ph, loc
                 """
             }
         ],
@@ -485,7 +505,7 @@ Both flagged. Limited SIU resources available for investigation.
     },
     
     4: {
-        "title": "The Case We Thought Was Closed",
+        "title": "Network Migration",
         "subtitle": "Detecting Network Migration After Successful Prosecution",
         "icon": "🔄",
         "starting_entity": ("Provider", "PROV_S4_BERNARD", "Dr. Bernard's Auto Injury Center"),
@@ -530,9 +550,9 @@ Six months ago, SIU successfully prosecuted a staged accident ring involving **D
             {
                 "depth": 2,
                 "title": "Legal Representation Analysis",
-                "narrative": "Examining which attorneys represented the fraudulent claimants...",
-                "traditional": "Case file notation: 'Multiple claimants used same attorney.' No follow-up investigation conducted.",
-                "discovery": "**12 of 15 claimants (80%)** were represented by Attorney Michael Chen. He was never sanctioned and **remains actively practicing**.",
+                "narrative": "Examining the complete legal representation picture for all claimants in the Bernard's case...",
+                "traditional": "Case file notation: 'Multiple claimants used same attorney.' No systematic analysis of attorney distribution or follow-up investigation conducted.",
+                "discovery": "**12 of 15 claimants (80%)** were represented by **Attorney Michael Chen**. The remaining 3 used different attorneys. Chen was **never sanctioned** despite his clients' confirmed fraud and **remains actively practicing**.",
                 "query": """
                     MATCH (prov:Provider {id: 'PROV_S4_BERNARD'})<-[:TREATED_AT]-(c:Claim)
                     OPTIONAL MATCH (c)-[:REPRESENTED_BY]->(a:Attorney)
@@ -622,151 +642,158 @@ def format_currency(amount):
 def create_graph_visualization(records, root_id=None, entity_filters=None):
     """
     Create rich graph visualization with enhanced tooltips and edge styling.
-    Uses stable node.id property for deduplication across queries.
+    
+    Args:
+        records: Neo4j query results
+        root_id: ID of the starting/root entity
+        entity_filters: Set of entity types to include (None = all)
     """
-    nodes = {}  # Key: stable node.id property
+    nodes = {}
     edges = []
-    edge_set = set()
+    node_id_map = {}  # Map element_id to our custom id
     
-    def process_node(value):
-        """Process a single node and add to nodes dict."""
-        if value is None or not hasattr(value, 'labels'):
-            return None
-        
-        props = dict(value)
-        node_id = props.get('id')
-        if not node_id:
-            return None
-            
-        if node_id in nodes:
-            return node_id
-        
-        labels = list(value.labels)
-        label = get_node_label(labels)
-        
-        if entity_filters and label not in entity_filters:
-            return None
-        
-        name = props.get('name', props.get('number', props.get('street', node_id)))
-        
-        color = COLOR_MAP.get(label, "#AAB7B8")
-        size = 28
-        border_width = 2
-        
-        if props.get('is_fraud'):
-            color = COLOR_MAP['confirmed_fraud']
-            size = 42
-            border_width = 4
-        
-        is_root = (root_id and node_id == root_id)
-        if is_root:
-            size = 48
-            border_width = 4
-        
-        tooltip_lines = [f"━━━ {label.upper()} ━━━", f"📌 {name}"]
-        
-        if label == "Claim":
-            if props.get('claim_amount'):
-                tooltip_lines.append(f"💰 Amount: {format_currency(props['claim_amount'])}")
-            if props.get('claim_date'):
-                tooltip_lines.append(f"📅 Date: {props['claim_date']}")
-            if props.get('status'):
-                tooltip_lines.append(f"📋 Status: {props['status']}")
-            if props.get('incident_type'):
-                tooltip_lines.append(f"🚗 Type: {props['incident_type']}")
-        elif label == "Provider":
-            if props.get('license'):
-                tooltip_lines.append(f"🏥 License: {props['license']}")
-            if props.get('status'):
-                tooltip_lines.append(f"📋 Status: {props['status']}")
-            if props.get('opened_date'):
-                tooltip_lines.append(f"📅 Opened: {props['opened_date']}")
-        elif label == "Attorney":
-            if props.get('bar_number'):
-                tooltip_lines.append(f"⚖️ Bar: {props['bar_number']}")
-        elif label == "Phone":
-            tooltip_lines.append(f"📱 {props.get('number', 'N/A')}")
-        elif label == "Address":
-            addr_parts = [props.get('street', '')]
-            if props.get('unit'):
-                addr_parts.append(props['unit'])
-            if props.get('city'):
-                addr_parts.append(f"{props['city']}, {props.get('state', '')}")
-            tooltip_lines.append(f"🏠 {', '.join(filter(None, addr_parts))}")
-            if props.get('type'):
-                tooltip_lines.append(f"📍 Type: {props['type']}")
-        elif label in ["Claimant", "Witness", "Employee", "Person"]:
-            if props.get('role'):
-                tooltip_lines.append(f"👤 Role: {props['role']}")
-            if props.get('job_title'):
-                tooltip_lines.append(f"💼 Title: {props['job_title']}")
-        
-        if props.get('is_fraud'):
-            tooltip_lines.extend(["", "🚨 CONFIRMED FRAUD", f"Type: {props.get('fraud_type', 'Unknown')}"])
-        
-        tooltip_lines.extend(["", f"ID: {node_id}"])
-        
-        nodes[node_id] = Node(
-            id=node_id,
-            label=name[:25] + "..." if len(str(name)) > 25 else str(name),
-            size=size,
-            color=color,
-            title="\n".join(tooltip_lines),
-            shape="star" if is_root else "dot",
-            borderWidth=border_width,
-            borderWidthSelected=border_width + 2,
-            font={"size": 12, "color": "#FFFFFF", "strokeWidth": 2, "strokeColor": "#000000"}
-        )
-        
-        return node_id
-    
-    def add_edge(source_id, target_id, rel_type):
-        """Add an edge with relationship type."""
-        if not source_id or not target_id:
-            return
-        if source_id not in nodes or target_id not in nodes:
-            return
-        
-        edge_key = f"{source_id}|{target_id}"
-        reverse_key = f"{target_id}|{source_id}"
-        
-        if edge_key in edge_set or reverse_key in edge_set:
-            return
-        
-        edge_set.add(edge_key)
-        
-        rel_label = RELATIONSHIP_LABELS.get(rel_type, rel_type.replace("_", " ").title()) if rel_type else "Connected"
-        
-        edges.append(Edge(
-            source=source_id,
-            target=target_id,
-            title=f"🔗 {rel_label}",
-            color="#B0B0B0",
-            width=2,
-            smooth={"type": "continuous"},
-            arrows={"to": {"enabled": True, "scaleFactor": 0.5}},
-            hoverWidth=3,
-            selectionWidth=3
-        ))
-    
-    # First pass: process all nodes
     for record in records:
-        record_dict = dict(record)
-        for key, value in record_dict.items():
-            if value and hasattr(value, 'labels'):
-                process_node(value)
+        for key, value in record.items():
+            if value is None:
+                continue
+            
+            # Handle nodes
+            if hasattr(value, 'labels'):
+                element_id = value.element_id
+                if element_id in nodes:
+                    continue
+                
+                labels = list(value.labels)
+                props = dict(value)
+                
+                label = get_node_label(labels)
+                
+                # Apply entity filter if specified
+                if entity_filters and label not in entity_filters:
+                    continue
+                
+                node_id = props.get('id', str(element_id))
+                node_id_map[element_id] = node_id
+                
+                name = props.get('name', props.get('number', props.get('street', node_id)))
+                
+                # Determine visual properties
+                color = COLOR_MAP.get(label, "#AAB7B8")
+                size = 28
+                border_width = 2
+                
+                # Fraud highlighting
+                if props.get('is_fraud'):
+                    color = COLOR_MAP['confirmed_fraud']
+                    size = 42
+                    border_width = 4
+                
+                # Root node highlighting
+                is_root = (root_id and node_id == root_id)
+                if is_root:
+                    size = 48
+                    border_width = 4
+                
+                # Build rich tooltip
+                tooltip_lines = [
+                    f"━━━ {label.upper()} ━━━",
+                    f"📌 {name}"
+                ]
+                
+                if label == "Claim":
+                    if props.get('claim_amount'):
+                        tooltip_lines.append(f"💰 Amount: {format_currency(props['claim_amount'])}")
+                    if props.get('claim_date'):
+                        tooltip_lines.append(f"📅 Date: {props['claim_date']}")
+                    if props.get('status'):
+                        tooltip_lines.append(f"📋 Status: {props['status']}")
+                    if props.get('incident_type'):
+                        tooltip_lines.append(f"🚗 Type: {props['incident_type']}")
+                
+                elif label == "Provider":
+                    if props.get('license'):
+                        tooltip_lines.append(f"🏥 License: {props['license']}")
+                    if props.get('status'):
+                        tooltip_lines.append(f"📋 Status: {props['status']}")
+                    if props.get('opened_date'):
+                        tooltip_lines.append(f"📅 Opened: {props['opened_date']}")
+                
+                elif label == "Attorney":
+                    if props.get('bar_number'):
+                        tooltip_lines.append(f"⚖️ Bar: {props['bar_number']}")
+                
+                elif label == "Phone":
+                    tooltip_lines.append(f"📱 {props.get('number', 'N/A')}")
+                
+                elif label == "Address":
+                    addr_parts = [props.get('street', '')]
+                    if props.get('unit'):
+                        addr_parts.append(props['unit'])
+                    if props.get('city'):
+                        addr_parts.append(f"{props['city']}, {props.get('state', '')}")
+                    tooltip_lines.append(f"🏠 {', '.join(filter(None, addr_parts))}")
+                    if props.get('type'):
+                        tooltip_lines.append(f"📍 Type: {props['type']}")
+                
+                elif label in ["Claimant", "Witness", "Employee", "Person"]:
+                    if props.get('role'):
+                        tooltip_lines.append(f"👤 Role: {props['role']}")
+                    if props.get('job_title'):
+                        tooltip_lines.append(f"💼 Title: {props['job_title']}")
+                
+                # Fraud indicator
+                if props.get('is_fraud'):
+                    tooltip_lines.extend([
+                        "",
+                        "🚨 CONFIRMED FRAUD",
+                        f"Type: {props.get('fraud_type', 'Unknown')}"
+                    ])
+                
+                # ID reference
+                tooltip_lines.extend(["", f"ID: {node_id}"])
+                
+                nodes[element_id] = Node(
+                    id=str(element_id),
+                    label=name[:25] + "..." if len(str(name)) > 25 else str(name),
+                    size=size,
+                    color=color,
+                    title="\n".join(tooltip_lines),
+                    shape="star" if is_root else "dot",
+                    borderWidth=border_width,
+                    borderWidthSelected=border_width + 2,
+                    font={"size": 12, "color": "#FFFFFF", "strokeWidth": 2, "strokeColor": "#000000"}
+                )
     
-    # Second pass: process relationships
+    # Second pass for relationships (from records with source, r, target structure)
+    edge_set = set()
     for record in records:
         record_dict = dict(record)
         if 'r' in record_dict and record_dict['r'] is not None:
             rel = record_dict['r']
             source_node = record_dict.get('source')
             target_node = record_dict.get('target')
-            if source_node and target_node:
-                source_id = dict(source_node).get('id')
-                target_id = dict(target_node).get('id')
-                add_edge(source_id, target_id, rel.type)
+            if source_node and target_node and source_node.element_id in nodes and target_node.element_id in nodes:
+                source = str(source_node.element_id)
+                target = str(target_node.element_id)
+                edge_key = f"{source}-{target}"
+                reverse_key = f"{target}-{source}"
+                
+                if edge_key not in edge_set and reverse_key not in edge_set:
+                    edge_set.add(edge_key)
+                    rel_type = rel.type if hasattr(rel, 'type') else "CONNECTED"
+                    rel_label = RELATIONSHIP_LABELS.get(rel_type, rel_type.replace("_", " ").title())
+                    
+                    edges.append(Edge(
+                        source=source,
+                        target=target,
+                        title=f"🔗 {rel_label}",
+                        color="#B0B0B0",
+                        width=2,
+                        smooth={"type": "continuous"},
+                        arrows={"to": {"enabled": True, "scaleFactor": 0.5}},
+                        hoverWidth=3,
+                        selectionWidth=3
+                    ))
     
     return list(nodes.values()), edges
 
@@ -888,8 +915,8 @@ def get_neighborhood(entity_type, entity_id, hops, entity_filters=None):
     with driver.session() as session:
         query = f"""
             MATCH path = (root:{entity_type} {{id: $entity_id}})-[*1..{hops}]-(connected)
-            UNWIND relationships(path) as r
-            RETURN DISTINCT startNode(r) as source, r, endNode(r) as target
+            UNWIND nodes(path) as n
+            RETURN DISTINCT n
         """
         result = session.run(query, entity_id=entity_id)
         return list(result)
@@ -907,7 +934,7 @@ def verify_scenarios():
         """).single()
         count = result['count'] if result else 0
         results.append({
-            "scenario": "1: The Two-Hour Attorney",
+            "scenario": "1: Captive Medical Mill",
             "check": "Webb client count",
             "expected": 47,
             "actual": count,
@@ -921,7 +948,7 @@ def verify_scenarios():
         """).single()
         count = result['count'] if result else 0
         results.append({
-            "scenario": "2: The Typo That Wasn't",
+            "scenario": "2: Identity Web",
             "check": "Shared phone users",
             "expected": 5,
             "actual": count,
@@ -1004,10 +1031,10 @@ def render_scenario_walkthrough():
     
     # Scenario selector - prominent placement
     scenario_options = {
-        1: "⚖️ Scenario 1: The Two-Hour Attorney",
-        2: "📱 Scenario 2: The Typo That Wasn't", 
-        3: "📊 Scenario 3: The Audit That Went Deeper",
-        4: "🔄 Scenario 4: The Case We Thought Was Closed"
+        1: "⚖️ Scenario 1: Captive Medical Mill",
+        2: "📱 Scenario 2: Identity Web", 
+        3: "📊 Scenario 3: Provider Distinction",
+        4: "🔄 Scenario 4: Network Migration"
     }
     
     col_select, col_reset = st.columns([4, 1])
@@ -1048,7 +1075,7 @@ def render_scenario_walkthrough():
     st.divider()
     
     # Main layout: Controls + Info on left, Graph on right
-    col_left, col_right = st.columns([1, 3])
+    col_left, col_right = st.columns([2, 3])
     
     with col_left:
         # Navigation controls
@@ -1145,7 +1172,7 @@ def render_scenario_walkthrough():
                     st.metric("Connections", len(edges))
                 
                 # Render graph
-                config = get_graph_config(width=1500, height=600)
+                config = get_graph_config(width=650, height=450)
                 agraph(nodes, edges, config)
                 
             else:
@@ -1196,38 +1223,26 @@ def render_free_exploration():
     # Entity type filters
     st.markdown("**Filter Visible Entity Types:**")
     
-    filter_cols = st.columns(5)
-    available_filters = ["Claim", "Claimant", "Provider", "Attorney", "Address", "Phone", "Witness", "Employee", "Adjuster", "Location"]
+    filter_cols = st.columns(6)
+    default_filters = {"Claim", "Claimant", "Provider", "Attorney", "Address", "Phone", "Witness", "Employee"}
     
-    # Initialize all filters as checked
+    # Initialize filter state
     if 'entity_filters' not in st.session_state:
-        st.session_state.entity_filters = set(available_filters)
+        st.session_state.entity_filters = default_filters.copy()
+    
+    available_filters = ["Claim", "Claimant", "Provider", "Attorney", "Address", "Phone", "Witness", "Employee", "Adjuster", "Location"]
     
     active_filters = set()
     for i, filter_type in enumerate(available_filters):
-        with filter_cols[i % 5]:
-            is_root_type = (filter_type == selected_type)
-            
-            if is_root_type:
-                st.checkbox(
-                    filter_type,
-                    value=True,
-                    disabled=True,
-                    key=f"filter_{filter_type}",
-                    help="Root entity type cannot be excluded"
-                )
+        with filter_cols[i % 6]:
+            if st.checkbox(
+                filter_type, 
+                value=filter_type in st.session_state.entity_filters,
+                key=f"filter_{filter_type}"
+            ):
                 active_filters.add(filter_type)
-            else:
-                if st.checkbox(
-                    filter_type,
-                    value=filter_type in st.session_state.entity_filters,
-                    key=f"filter_{filter_type}"
-                ):
-                    active_filters.add(filter_type)
     
-    # Always include root type
-    active_filters.add(selected_type)
-    st.session_state.entity_filters = active_filters
+    st.session_state.entity_filters = active_filters if active_filters else default_filters
     
     # Selected entity display
     st.markdown(f"**Selected:** `{selected_entity[1]}` ({selected_type})")
@@ -1434,10 +1449,10 @@ st.sidebar.markdown("### Visual Legend")
 st.sidebar.markdown("""
 **Entity Types:**
 - 🔵 Claimants & Witnesses
-- 🟢 Adjusters
+- 🟢 Adjusters & Employees
 - 🟣 Medical Providers
 - 🟠 Attorneys
-- 🔷 Addresses & Phones
+- 🩵 Addresses & Phones
 
 **Indicators:**
 - 🔴 Confirmed Fraud
